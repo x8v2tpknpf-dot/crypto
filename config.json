@@ -1,0 +1,22 @@
+{
+  "rpc": {
+    "host": "127.0.0.1",
+    "port": 18443,
+    "user": "rpcuser",
+    "password": "rpcpassword",
+    "network": "regtest"
+  },
+  "lock": {
+    "gpio_pin": 17,
+    "open_duration_sec": 3
+  },
+  "listener": {
+    "poll_interval_sec": 2,
+    "use_zmq": false,
+    "zmq_address": "tcp://127.0.0.1:28332"
+  },
+  "crypto": {
+    "expected_command": "OPEN_LOCK",
+    "secret_key": "REPLACE_WITH_YOUR_AES_KEY"
+  }
+}
