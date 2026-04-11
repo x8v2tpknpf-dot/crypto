@@ -116,6 +116,23 @@ def get_signal(df: pd.DataFrame) -> str:
     return "NONE"
 
 
+def calc_tp_price(side: str, entry_price: float, stop_price: float,
+                  r_multiple: int) -> float:
+    """
+    依據 R 倍數計算止盈價格
+    :param side: "LONG" 或 "SHORT"
+    :param entry_price: 開倉價格
+    :param stop_price: 停損價格
+    :param r_multiple: 目標 R 倍數（例如 10 表示 10R）
+    :return: 止盈價格
+    """
+    r = abs(entry_price - stop_price)
+    if side == "LONG":
+        return round(entry_price + r * r_multiple, 4)
+    else:
+        return round(entry_price - r * r_multiple, 4)
+
+
 def calc_stop_loss(side: str, entry_price: float, stop_pct: float) -> float:
     """
     計算停損價格

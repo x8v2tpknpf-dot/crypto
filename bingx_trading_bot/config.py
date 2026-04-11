@@ -30,6 +30,13 @@ EMA_PERIOD = 25
 # ── 停損設定 ────────────────────────────────────────────────
 STOP_LOSS_PCT = 0.02    # 停損比例（距開倉價 2%）
 
+# ── 止盈設定（多段分批平倉）────────────────────────────────
+TP1_R     = 10      # 第一止盈目標（10R）
+TP2_R     = 20      # 第二止盈目標（20R）
+TP1_RATIO = 0.35    # TP1 平倉比例（35%）
+TP2_RATIO = 0.35    # TP2 平倉比例（35%）
+TP3_RATIO = 0.30    # TP3 剩餘比例（30%，反向信號觸發）
+
 # ── Telegram 通知 ───────────────────────────────────────────
 TELEGRAM_TOKEN   = "your_telegram_bot_token_here"
 TELEGRAM_CHAT_ID = "your_telegram_chat_id_here"
