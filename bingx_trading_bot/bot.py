@@ -5,6 +5,8 @@
 # TP1 達成後停損移至成本價（保本）
 # ============================================================
 
+import csv
+import os
 import time
 import hmac
 import hashlib
@@ -275,6 +277,31 @@ def cancel_all_orders(symbol: str):
         logger.warning(f"取消掛單失敗: {e}")
 
 
+TRADE_LOG_FILE = "trades.csv"
+_TRADE_LOG_HEADER = ["time", "symbol", "side", "entry_price", "close_price", "qty", "pnl", "reason"]
+
+
+def log_trade(symbol: str, side: str, entry_price: float, close_price: float,
+              qty: float, pnl: float, reason: str):
+    """將已完成的交易寫入 trades.csv"""
+    file_exists = os.path.isfile(TRADE_LOG_FILE)
+    with open(TRADE_LOG_FILE, "a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=_TRADE_LOG_HEADER)
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow({
+            "time":        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "symbol":      symbol,
+            "side":        side,
+            "entry_price": round(entry_price, 4),
+            "close_price": round(close_price, 4),
+            "qty":         qty,
+            "pnl":         round(pnl, 2),
+            "reason":      reason,
+        })
+    logger.info(f"交易紀錄已寫入 {TRADE_LOG_FILE}")
+
+
 def get_last_filled_order(symbol: str) -> dict | None:
     """查詢最近一筆已成交訂單，用來判斷出場原因與實際成交價"""
     try:
@@ -386,6 +413,8 @@ class TradingBot:
                 self.entry_price, close_price, realized_pnl,
                 reason,
             )
+            log_trade(self.symbol, self.current_side, self.entry_price,
+                      close_price, self.original_qty, realized_pnl, reason)
             self._reset_position_state()
 
         # ── 有倉位時的處理 ───────────────────────────────────
@@ -443,6 +472,8 @@ class TradingBot:
                 else:
                     pnl = (entry - current_price) * abs(float(position.get("positionAmt", 0)))
                 notify_close_position(pos_side, self.symbol, entry, current_price, pnl, "反向信號")
+                log_trade(self.symbol, pos_side, entry, current_price,
+                          abs(float(position.get("positionAmt", 0))), pnl, "反向信號")
 
                 self._reset_position_state()
                 time.sleep(1)
