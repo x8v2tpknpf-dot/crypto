@@ -76,7 +76,8 @@ def notify_tp_hit(tp_level: int, side: str, symbol: str,
 
 
 def notify_close_position(side: str, symbol: str, entry_price: float,
-                           close_price: float, pnl: float):
+                           close_price: float, pnl: float,
+                           reason: str = "反向信號"):
     """發送全倉平倉通知"""
     direction = "多單 📈" if side == "LONG" else "空單 📉"
     pnl_emoji = "✅" if pnl >= 0 else "❌"
@@ -84,6 +85,7 @@ def notify_close_position(side: str, symbol: str, entry_price: float,
         f"*【平倉通知】*\n"
         f"交易對：`{symbol}`\n"
         f"方向：{direction}\n"
+        f"出場原因：{reason}\n"
         f"開倉價：`{entry_price:.4f}` USDT\n"
         f"平倉價：`{close_price:.4f}` USDT\n"
         f"盈虧：{pnl_emoji} `{pnl:+.2f}` USDT"

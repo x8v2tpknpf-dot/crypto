@@ -275,6 +275,23 @@ def cancel_all_orders(symbol: str):
         logger.warning(f"取消掛單失敗: {e}")
 
 
+def get_last_filled_order(symbol: str) -> dict | None:
+    """查詢最近一筆已成交訂單，用來判斷出場原因與實際成交價"""
+    try:
+        data = _get("/openApi/swap/v2/trade/allOrders", {
+            "symbol": symbol,
+            "limit":  10,
+        })
+        orders = data.get("data", {}).get("orders", [])
+        for order in sorted(orders, key=lambda o: int(o.get("time", 0)), reverse=True):
+            if order.get("status") == "FILLED":
+                return order
+        return None
+    except Exception as e:
+        logger.warning(f"查詢訂單歷史失敗: {e}")
+        return None
+
+
 # ── 主循環 ────────────────────────────────────────────────────
 
 class TradingBot:
@@ -336,6 +353,41 @@ class TradingBot:
         # ── 取得當前倉位 ─────────────────────────────────────
         position = get_position(self.symbol)
 
+        # ── 偵測外部平倉（止損觸發 or 手動平倉）────────────────
+        if position is None and self.current_side is not None:
+            logger.info(f"偵測到倉位消失，查詢出場原因...")
+            last_order = get_last_filled_order(self.symbol)
+
+            if last_order:
+                order_type   = last_order.get("type", "")
+                avg_price    = float(last_order.get("avgPrice") or last_order.get("price") or 0)
+                realized_pnl = float(last_order.get("realizedPnl") or last_order.get("profit") or 0)
+
+                if order_type == "STOP_MARKET":
+                    reason = "止損"
+                else:
+                    reason = "手動平倉"
+
+                close_price = avg_price if avg_price > 0 else get_latest_price(self.symbol)
+            else:
+                reason      = "未知"
+                close_price = get_latest_price(self.symbol)
+                realized_pnl = 0.0
+
+            if realized_pnl == 0.0 and close_price > 0 and self.entry_price > 0:
+                if self.current_side == "LONG":
+                    realized_pnl = (close_price - self.entry_price) * self.original_qty
+                else:
+                    realized_pnl = (self.entry_price - close_price) * self.original_qty
+
+            logger.info(f"出場原因: {reason} | 平倉價: {close_price} | PnL: {realized_pnl:.2f}")
+            notify_close_position(
+                self.current_side, self.symbol,
+                self.entry_price, close_price, realized_pnl,
+                reason,
+            )
+            self._reset_position_state()
+
         # ── 有倉位時的處理 ───────────────────────────────────
         if position is not None:
             pos_side      = position.get("positionSide", "LONG")
@@ -390,7 +442,7 @@ class TradingBot:
                     pnl = (current_price - entry) * abs(float(position.get("positionAmt", 0)))
                 else:
                     pnl = (entry - current_price) * abs(float(position.get("positionAmt", 0)))
-                notify_close_position(pos_side, self.symbol, entry, current_price, pnl)
+                notify_close_position(pos_side, self.symbol, entry, current_price, pnl, "反向信號")
 
                 self._reset_position_state()
                 time.sleep(1)
